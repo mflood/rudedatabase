@@ -1,0 +1,387 @@
+.\" Process this file with 
+.\" groff -man -Tascii rudedatabase.3
+.\" OR
+.\" groff -man -Tascii rudedatabase.3 | less
+.\" To convert to HTML, use:
+.\" man2html -r rudedatabase.3 > rudedatabase.3.html
+.\"
+.TH rudedatabase 3  "January 19, 2006" "Version 4.0" "User Manuals"
+.SH NAME
+rudedatabase \- C++ wrapper library for mysql database
+.SH SYNOPSIS
+
+.nf
+	#include <rude/database.h>
+
+	rude::Database::addContext("contextname","database","username","password","serveraddress",3306);
+	
+	rude::Database *database = rude::Database::instance("contextname");
+
+	if(!database->executeQuery("INSERT INTO testtable SET name='thing', number=3"))
+	{
+
+		const char *errmsg=database->getError();
+	}
+
+	if(database->storeResultQuery("SHOW DATABASES"))
+	{
+		while(database->nextRow())
+		{
+			const char *somedatabase=database->column(0);
+		}
+		database->freeResult();
+	}
+	else
+	{
+		const char *errmsg=database->getError();
+	}
+.fi
+
+.SH DESCRIPTION
+
+.PP
+
+The rudedatabase library makes programming with mySql databases fast and 
+simple. It provides a wrapper that allows application code to be portable 
+across all supported platforms.  Its use of contexts allows allows the 
+application to remain relatively oblivious to the connection parameters.
+The Singleton architecture of the Database library provides simplicity and efficiency
+for Model-View-Controller type architectures.
+
+.SH API
+
+.PP	
+.B	STATIC METHODS
+.nf
+
+.BI	"static void rude::Database::addContext(" "contextname" ", " "database" ", " "username" ", " "password" ", " "serveraddress" ", " "port" ")"
+
+	Specifies a database, username, password, server and port that will be identified by contextname.
+	The context name can be anything and is simply used as an identifier to the context.
+	After a context is added, the database represented by the context name can be obtained by
+	calling the Database::instance(contextname) method.
+	Any number of contexts can be added. Each context should have a unique contextname.
+
+.BI	"static char * rude::Database::escape(const char *" "string" ", int " "length" ")"
+
+	This ensures that string or binary data won't mess up your queries.
+	You should escape all string data that can possibly be tainted (eg. you are not sure what is in it).
+	The caller (you) is responsible for deleting the resulting string.Escapes illegal characters within a string
+
+	Example:
+	
+	const char *catname=" A very ''' Awkward \\\\ category \\" Name";
+	char *safe_name = database->escape( catname, strlen(catname));
+
+	std::string sqlstatement = "INSERT INTO tbl_category SET name='";
+	sqlstatement += safe_name;
+	sqlstatement += "'";
+
+	delete [] safe_name;
+
+	database->executeQuery(sqlstatement.c_str());
+
+
+.BI	"static void rude::Database::finish()"
+
+	Closes all open database connections
+	You can safely call this even if no connections were open and no instances were accessed.
+	We recommend that this method be called at the end of your main() method in any application that
+	may use the database object to avoid orphaned database connections.
+
+	Example:
+
+	rude::Database::finish();
+
+.BI	"static rude::Database * rude::Database:instance( const char *" "contextname" ");"
+
+	Returns the singleton database object for the named context
+	The named context should refer to a context declared using the addContext() method
+
+	Example:
+
+	// Declare the contexts that are (possibly) used in the application
+	//
+	rude::Database::addContext("context1", "test", "root", "", "localhost", 3306");
+	rude::Database::addContext("context2", "example_db", "root", "", "localhost", 3306");
+
+	// Obtain the desired context 
+	//
+	rude::Database *database = rude::Database::instance("context2");
+
+	// use the database object...
+
+.fi
+
+.PP	
+.B	CONSTRUCTOR/DESTRUCTOR
+.nf
+
+.BI	"protected Database( const char *" "contextname" ")"
+
+	Database objects cannot be instantiated directly.
+	Instead, use rude::Database::instance(const char *contextname) to obtain a reference to the object.
+
+.BI	"~Database()"
+	
+	You should not directly delete database instances.
+	Instead, use rude::Database::finish() at the end of your application 
+	to close all open connections and clean up all instances
+	
+
+.fi
+
+.PP	
+.B	INSTANCE METHODS
+.nf
+	
+.BI	"const char * column(int " "index" ")"
+
+	Returns the value located at the specified column within the current row set
+	The first index is 0. Will return NULL when out of range. Note that
+	the values will change when nextRow() is called. 
+
+	EXAMPLE:
+
+	if(database->storeResultQuery("SELECT first_name, last_name, age FROM tbl_contacts"))
+	{
+		while(database->nextRow())
+		{
+			const char *first_name = database->column(0);
+			const char *last_name = database->column(1);
+			const char *age = database->column(2);
+		}
+		database->freeResult();
+	}
+
+
+.BI	"bool executeQuery(const char *" "sqlstatement" ")"
+
+	Sends queries that do not return a result (UPDATE, DELETE, CREATE, INSERT, ALTER, etc...)
+	Returns true if successful, false otherwise. NOTE: If you want to know the resulting insert-id
+	for an INSERT statment, use insertQuery() instead.
+
+	EXAMPLE:
+
+	db_database->executeQuery( "DELETE FROM tbl_color WHERE color='blue'" ); 
+
+.BI	"bool freeResult()"
+
+	Frees resources consumed by a query result set
+	For every call to useResultQuery() or storeResultQuery() in your application,
+	there should be an accompanying freeResult() call as well.  You cannot 
+	issue any other queries until the result set is freed.
+
+.BI	"const char *getError()"
+
+	Returns the last known error
+
+.BI	"int insertQuery(const char *" "sqlstatement" ")"
+
+	Sends an INSERT query and returns the insert id
+	This is only applicable for tables with an AUTO_INCREMENT primary key.
+	For tables without an AUTO_INCREMENT primary key, use executeQuery() instead.
+	Returns 0 if an error occurs.
+
+	Example:
+
+	if( int insertid = db_database->insertQuery( "INSERT INTO tbl_color SET color='blue'" ) )
+	{
+		std::cout << "Inserted a color with id of " << y << "\n";
+	}
+	else
+	{
+		std::cout << db_database->getError() << "\n";
+	}
+
+
+.BI	"bool nextRow()"
+
+	Selects the next row from query result set
+	Returns true if the next row is selected
+	Returns false if there are no more rows.
+	Must be called to get the first row.
+
+	EXAMPLE:
+
+	if(database->storeResultQuery("SELECT category_name FROM tbl_categories"))
+	{
+		if(database->nextRow())
+		{
+			//
+			// We got some data back
+
+			std::cout << "Current Categories:\n";
+			do
+			{
+				std::cout << database->column(0) << "\n";
+			}
+			while(database->netxRow());
+		}
+		else
+		{
+			//
+			// The result set was empty
+
+			std::cout << "There are no categories at this time\n";
+		}
+		database->freeResult();
+	}
+	else
+	{
+		std::cout << database->getError() << "\n";
+	}
+
+
+.BI	"const char *singleValueQuery( const char *" "sqlstatement" ")"
+
+	Send a query that expects a single value result
+	Use this method when you expect a single value to be the result.
+	Returns c-string (const char *) representation of data if successful
+	Returns null if a result could not be obtained or an error occurs
+	
+	EXAMPLE:
+
+	const char *username = db_database->singleValueQuery( "SELECT username FROM tbl_users WHERE userid=348" );
+	if(username)
+	{
+		std::cout << "Username is " << username << "\n";
+	}
+	else
+	{
+		std::cout << "Userid 348 does not exist: " << db_database->getError() << "\n";
+	}
+
+.BI	"const char *stat()"
+
+	Returns MYSQL server status information
+
+	EXAMPLE:
+
+	std::cout << database->stat() << "\n";
+
+.BI	"bool storeResultQuery(const char *" "sqlstatement" ")"
+
+	Sends a query that expects a result set - obtains results from server all at once (time friendly)
+	This is the faster alternative to calling useResultQuery(),
+	and is the preferred method when small result sets are expected.
+	Returns false if an error occurs.
+	If it returns true, use nextRow() and column() to access the results.
+	If the first call to nextRow() returns false, then the result set is empty.
+	After you are done with the results, call freeResult() to free the system resources.
+
+	EXAMPLE:
+
+	if(database->storeResultQuery("SELECT username, password FROM tbl_users"))
+	{
+		while(database->nextRow())
+		{
+			std::string username = database->column(0);
+			std::string password = database->column(1);
+
+			std::cout << "Username: << username << " Password: " << password << "\n";
+		}
+		database->freeResult();
+	}
+	else
+	{
+		std::cout << database->getError() << "\n";
+	}
+
+
+
+.BI	"bool useResultQuery(const char *" "sqlstatment" ")"
+
+	Sends a query that expects a result set - obtains results from server one row at a time (memory / network friendly)
+	This uses less memory and network resources than calling useResultQuery(),
+	and is the preferred method when large result sets are expected
+	Returns false if an error occurs.
+	If it returns true, use nextRow() and column() to access the results
+	If the first call to nextRow() returns false, then the result set is empty.
+	After you are done with the results, call freeResult() to free the system resources.
+
+	EXAMPLE
+
+	if(database->storeResultQuery("SELECT username, password FROM tbl_users"))
+	{
+		while(database->nextRow())
+		{
+			std::string username = database->column(0);
+			std::string password = database->column(1);
+			std::cout << "Username: << username << " Password: " << password << "\n";
+		}
+		database->freeResult();
+	}
+	else
+	{
+		std::cout << database->getError() << "\n";
+	}
+
+.fi
+
+
+.SH EXAMPLES
+
+Examples, how-to's and tutorials can also be found at the rudeserver.com website
+
+.B Basic Usage
+
+ #include <rude/database.h>
+
+ int main(void)
+ {
+
+	// At the beginning of your application, 
+	// add all database contexts your application will need
+	//
+	rude::Database::addContext("context1", "test_db", "username", "password", "localhost", 3306);
+	rude::Database::addContext("context2", "test_db", "root", "password", "remote.example.com", 3306);
+
+
+	// Obtain the database instance anywhere in your application.
+	// It will connect to the database the first time you access it.
+	//
+	rude::Database *database=rude::Database::instance("context1");
+
+	if(database->storeResultQuery("SELECT username, password FROM tbl_users"))
+	{
+		while(database->nextRow())
+		{
+			std::string username = database->column(0);
+			std::string password = database->column(1);
+			std::cout << "Username: << username << " Password: " << password << "\n";
+		}
+		database->freeResult();
+	}
+	else
+	{
+		std::cout << database->getError() << "\n";
+	}
+
+
+	// At the end of you application, clean up all resources and close open db connections
+	//    
+	rude::Database::finish();
+
+	return 0;
+ }
+	
+.SH SEE ALSO
+.BR rudecgiparser(3),
+.BR rudeconfig(3),
+.BR rudesocket(3),
+.BR rudesession(3)
+
+.SH REPORTING PROBLEMS
+
+Before reporting a problem, please check the rudeserver.com web site to verify that you have the latest version of rudedatabase; otherwise, obtain the latest version and see if the problem still exists.  Please read the  FAQ at:
+
+              http://www.rudeserver.com/
+
+before asking for help.  Send questions and/or comments to  matt@rudeserver.com
+
+.SH AUTHORS
+Copyright (C) 2000 Matthew Flood (matt@rudeserver.com)
+
+This  software is provided "as-is," without any express or implied warranty.  In no event will the authors be held liable for any damages arising from the use of this software.  See the distribution directory with respect  to  requirements  governing  redistribution. Thanks to all the people who reported problems and suggested various improvements in rudedatabase; who are too numerous to cite here.
+

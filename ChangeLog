@@ -1,0 +1,58 @@
+ChangeLog for RudeDatabase C++ Library
+
+Copyright (C) 2002, 2003, 2004, 2005 Matthew Flood
+See file AUTHORS for contact information
+
+This file is part of RudeDatabase.
+
+RudeDatabase is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2, or (at your option)
+any later version.
+
+RudeDatabase is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with RudeDatabase; see the file COPYING.  If not, write to
+the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+
+* Tue Jan 08 2008 Matt Flood <matt@rudeserver.com>
+- 4.1.0-1
+- Added code to clear the map collection in Database::finish()
+
+* Mon Jun 04 2007 Matt Flood <matt@rudeserver.com>
+- 4.0.1-1
+- Updated the way window's mysql files are included
+- Updated the man page
+- Changed internal namespace from database to db
+- Made getError() const correct
+- created typedef RUDEBOOL for easier windows ports
+- Minor build script changes
+
+* Tue May 29 2007 Matt Flood <matt@rudeserver.com>
+- 3.0.1-1
+- Created Man Page
+- Minor build script changes
+
+* Thu Apr 10 2006 Matt Flood <matt@rudeserver.com>
+- 3.0.0-1
+- First RPM Release
+
+---------------------------------------------------
+Release Version 2.3		Library Version 3.0.0
+
+2005-05-22 Matthew Flood
+
+		Made 'invalid context' error display more info (eg. the context name that was invalid)
+
+2005-05-16 Matthew Flood
+
+		Converted Library to Open Source
+
+------------------------------------------------------------------------------------
+
+--End of Change Log--
